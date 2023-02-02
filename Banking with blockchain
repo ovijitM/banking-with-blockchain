@@ -1,0 +1,123 @@
+// SPDX-License-Identifier: MIT
+
+
+pragma solidity ^0.8.0;
+
+
+contract Branch{
+    struct User{
+        bytes32 username;
+        uint accNo;
+        address accAdd;
+    }
+    struct Balance{
+        uint accNumber;
+        address accAddress;
+        uint accBalance;
+
+    }
+
+
+    mapping(uint=>Balance) internal accBalance;//account balance with account no
+    mapping(address=>Balance) internal accBalanceadd;//account balance with account address
+    mapping(uint=>User) internal userdetails;
+    mapping(address=>User) internal userdetailsadd;
+    mapping(uint=>bool) internal userAccNo;
+    mapping(address=>bool) internal userAccAdd;
+
+    function createAccount(string memory _name,uint _id, address _add) public returns(string memory){
+        require(!userAccNo[_id],"account number already used");
+        require(!userAccAdd[_add],"account already exists");
+        userAccNo[_id]=true;
+        userdetails[_id]=User(sha256(abi.encodePacked(_name)),_id,_add);
+        userAccAdd[_add]=true;
+        userdetailsadd[_add]=User(sha256(abi.encodePacked(_name)),_id,_add);
+        accBalance[_id].accNumber = _id;
+        accBalance[_id].accAddress = _add;
+        accBalance[_id].accBalance = 0;
+        accBalanceadd[_add].accNumber = _id;
+        accBalanceadd[_add].accAddress = _add;
+        accBalanceadd[_add].accBalance = 0;
+        return "account created successfully";
+    }
+    function approveCreateAccount(uint _id, address _add) public {
+    require(userdetails[_id].accNo == _id, "The account number does not exist");
+    require(userdetails[_id].accAdd == _add, "The account address does not match with the account number");
+    accbalance(_id, _add, 0);
+    }
+
+    function deleteaccount(uint _id,address _add) public {
+        delete userdetails[_id];
+        delete accBalance[_id];
+        delete userdetailsadd[_add];
+        delete accBalanceadd[_add];
+        userAccNo[_id] = false;
+        userAccAdd[_add] = false;
+    }
+
+    function accbalance(uint _accNumber,address _accAddress, uint _balance) internal {
+        require(userdetails[_accNumber].accNo == _accNumber, "The account number does not exist");
+        require(userdetails[_accNumber].accAdd == _accAddress, "The account address does not match with the account number");
+        accBalance[_accNumber].accNumber = _accNumber;
+        accBalance[_accNumber].accAddress = _accAddress;
+        accBalanceadd[_accAddress].accNumber = _accNumber;
+        accBalanceadd[_accAddress].accAddress = _accAddress;
+        accBalanceadd[_accAddress].accBalance = _balance;
+        accBalance[_accNumber].accBalance = _balance;
+    }
+
+    function deposit(uint _accnumber, uint _deposit) public {
+    require(userdetails[_accnumber].accNo == _accnumber, "The account number does not exist");
+    accBalance[_accnumber].accBalance += _deposit;
+    }
+
+    function withdraw(uint _accnumber, uint _withdraw) public {
+    require(userdetails[_accnumber].accNo == _accnumber, "The account number does not exist");
+    require(accBalance[_accnumber].accBalance >= _withdraw, "Insufficient balance");
+    accBalance[_accnumber].accBalance -= _withdraw;
+    }
+
+    function getuser(uint _id) public view returns(User memory){
+        return userdetails[_id];
+
+    }
+
+    function balancecheck(uint _accno) public view returns(uint) {
+        require(userdetails[_accno].accNo == _accno, "The account number does not exist");
+       return accBalance[_accno].accBalance;
+
+    }
+
+
+}
+
+contract customer{
+
+    // Reference to the Branch contract
+    Branch branch;
+
+    // Constructor that sets the reference to the Branch contract
+    constructor(address _branch) public {
+        branch = Branch(_branch);
+    }
+
+    function requestCreateAccount(string memory _name, uint _id, address _add) public {
+    
+    }
+
+
+    function checkbalance(uint _accno) public view returns (uint) {
+    return branch.balancecheck(_accno);
+    }
+
+    function sendmoney(uint _fromAccNo, uint _toAccNo, uint _amount) public {
+    Branch.User memory senderDetails = branch.getuser(_fromAccNo);
+    require(senderDetails.accNo == _fromAccNo, "The sender account number does not exist");
+    Branch.User memory receiverDetails = branch.getuser(_toAccNo);
+    require(receiverDetails.accNo == _toAccNo, "The receiver account number does not exist");
+    require(branch.balancecheck(_fromAccNo) >= _amount, "Insufficient balance");
+    branch.withdraw(_fromAccNo, _amount);
+    branch.deposit(_toAccNo, _amount);
+    }
+}
+
